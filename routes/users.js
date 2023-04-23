@@ -171,7 +171,7 @@ router.post('/verify-email', async(req, res) => {
     let user = await userModel.findOne({email:req.body.email})
     if(user)
     {
-        if(req.body.otp===user.tempOTP){
+        if(req.body.otp === user.tempOTP ){
           user.tempOTP=null
           user.emailVerify='Y'
           await user.save();
@@ -228,6 +228,84 @@ router.post('/login', async(req, res)=>{
   } catch (error) {
     console.log(error);
     res.send({statusCode:500, message:"Internal server Error"})
+  }
+})
+
+
+
+router.post('/reset-password', async(req, res) => {
+  try {
+    const user = await userModel.findOne({ email: req.body.email });
+    if (!user) {
+      res.send({ statusCode: 400, message: 'User does not exist' });
+    } else {
+      const otp = Math.round(Math.random() * 10000);
+      const emailBody = `
+        <div style="font-family: Helvetica,Arial,sans-serif;min-width:1000px;overflow:auto;line-height:2">
+          <div style="margin:50px auto;width:70%;padding:20px 0">
+            <div style="border-bottom:1px solid #eee">
+              <a href="" style="font-size:1.4em;color: #00466a;text-decoration:none;font-weight:600">Reset Your Password</a>
+            </div>
+            <p style="font-size:1.1em">Hi, ${user.firstName} ${user.lastName}</p>
+            <p>Use the following OTP to reset your password. OTP is valid for 2 minutes</p>
+            <h2 style="background: #00466a;margin: 0 auto;width: max-content;padding: 0 10px;color: #fff;border-radius: 4px;">${otp}</h2>
+            <p style="font-size:0.9em;">Regards,<br />Shanmugaraja  &#169; </p>
+            <hr style="border:none;border-top:1px solid #eee" />
+          </div>
+        </div>
+      `;
+      user.tempOTP = otp;
+      await user.save();
+      await sendEmailService(user.email, 'Reset Your Password', emailBody);
+      res.send({ statusCode: 200, message: 'OTP has been sent to your email address' });
+    }
+  } catch (error) {
+    console.log(error);
+    res.send({ statusCode: 500, message: 'Internal server error' });
+  }
+});
+
+
+router.post('/verify-otp', async(req, res) => {
+  try {
+    const user = await userModel.findOne({ email: req.body.email });
+    if (user) {
+      if (req.body.otp===user.tempOTP) {
+        user.tempOTP = null;
+        await user.save();
+        res.send({ statusCode: 200, message: 'OTP is verified successfully' });
+      } else {
+        res.send({ statusCode: 400, message: 'Invalid OTP' });
+      }
+      
+    } else {
+      res.send({ statusCode: 400, message: 'User does not exist' });
+    }
+  } catch (error) {
+    console.log(error);
+    res.send({ statusCode: 500, message: 'Internal server error' });
+  }
+});
+
+
+router.post('/update-password', async(req, res) => {
+  try {
+    const user = await userModel.findOne({ email: req.body.email });
+    if (!user) {
+      res.send({ statusCode: 400, message: 'User does not exist' });
+    } else {
+      if (req.body.password === req.body.confirmPassword) {
+        const hashedPassword = await hashPassword(req.body.password);
+        user.password = hashedPassword;
+        await user.save();
+        res.send({ statusCode: 200, message: 'Password is updated successfully' });
+      } else {
+        res.send({ statusCode: 400, message: 'Passwords do not match' });
+      }
+    }
+  } catch (error) {
+    console.log(error);
+    res.send({ statusCode: 500, message: 'Internal server error' });
   }
 })
 

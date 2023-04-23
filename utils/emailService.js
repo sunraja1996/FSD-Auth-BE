@@ -1,24 +1,30 @@
-const sgMail = require('@sendgrid/mail')
+const nodemailer = require('nodemailer');
+require('dotenv').config();
 
-const mailapi = process.env.SENDGRID_API_KEY;
+const sendEmailService = async(toEmail, subject, body) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.office365.com',
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.outlookemail,
+        pass: process.env.outlookpassword,
+      },
+    });
 
-const sendEmailService = async(toEmail, subject,body) => {
-try {
-    sgMail.setApiKey(mailapi)
-    const msg = {
-  to: `${toEmail}`, // Change to your recipient
-  from: 'sunraja1996@gmail.com', // Change to your verified sender
-  subject: `${subject}`,
-  html: `${body}`,
-}
+    const mailOptions = {
+      from: process.env.outlookemail,
+      to: `${toEmail}`,
+      subject: `${subject}`,
+      html: `${body}`,
+    };
 
-await sgMail.send(msg)
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Message sent: %s', info.messageId);
+  } catch (error) {
+    console.error(error);
+  }
+};
 
-} catch (error) {
-        console.error(error)
-      }
-}
-  
-  
-
-module.exports={sendEmailService}
+module.exports = { sendEmailService };
